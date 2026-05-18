@@ -1,24 +1,64 @@
 # KazIvestEngineeringTask
 
-Тестовое fullstack: чат с прокси к OpenAI + (усложнёнка) голос в текст через Web Speech API. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
+Тестовое fullstack: чат с ИИ (прокси к **Groq** / опционально OpenAI), голосовой ввод, история чатов, светлая и тёмная тема. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
 
-## Стек (как договорились + что разрешено в ТЗ)
+## Что умеет приложение
 
-- **Vue 3 + Vite** — фронт. Почему Vite: официально рекомендуют как стандартный билд для Vue, см. [Quick Start](https://vuejs.org/guide/quick-start.html).
-- **БЭМ** — классы вида `ai-chat__composer`, `ai-chat__mic--on` и т.д., чтобы по разметке было видно блок/элемент/модификатор ([коротко про БЭМ](https://ru.bem.info/methodology/quick-start/)).
-- **Express** — бэкенд, держит `OPENAI_API_KEY` только на сервере (ключ в браузер не светим — это не «паранойя», это нормальная модель для API-ключей). Старт по классике: [Express — установка](https://expressjs.com/en/starter/installing.html).
-- **OpenAI Chat Completions** — зовём `https://api.openai.com/v1/chat/completions` через `fetch` на Node 18+ (отдельный SDK не тащил — меньше зависимостей, поведение прозрачное). Формат запроса/ответа как в доке: [Chat Completions](https://platform.openai.com/docs/api-reference/chat/create).
-- **Голос** — `SpeechRecognition` / `webkitSpeechRecognition`, потому что в ТЗ прямым текстом разрешили Web Speech API; удобная выжимка по браузерам/ограничениям на MDN: [SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition). Про префикс `webkit` в Chrome часто всплывает в обсуждениях на Stack Overflow, например тут: [webkitSpeechRecognition vs SpeechRecognition](https://stackoverflow.com/questions/23728542/google-chrome-33-beta-speech-recognition-webspeechapi-broken) (да, тред старый, но суть про префиксы до сих пор актуальная в части браузеров).
+- Отправка сообщений в LLM и показ ответа в ленте диалога
+- **Несколько чатов** в сайдбаре (localStorage), удаление с подтверждением
+- Название чата = **первый вопрос** (длинные обрезаются с `…`)
+- **Голосовой ввод** (Web Speech API): на мобилке — запись до второго тапа по микрофону, текст в поле, потом отправка
+- **Светлая / тёмная тема** (переключатель в navbar)
+- **Адаптив**: на телефоне сайдбар в бургер-меню, скролл только у ленты сообщений
+- **Доступ по Wi‑Fi** с другого устройства (`vite --host`, API на `0.0.0.0`)
 
-Про **прокси в dev**: в `client/vite.config.js` настроен `server.proxy` на `127.0.0.1:3000`, чтобы с фронта ходить на `/api/...` без CORS-танцев с бубном (это штатная фича Vite: [server.proxy](https://vitejs.dev/config/server-options.html#server-proxy)).
+## Стек
+
+| Часть | Технологии |
+|--------|------------|
+| Фронт | **Vue 3**, **Vite**, **БЭМ** (`ai-chat__…`) |
+| UI | **PrimeVue 4** — см. ниже |
+| Бэк | **Node.js**, **Express** |
+| LLM | **Groq** (бесплатный tier) или **OpenAI** Chat Completions |
+
+### Vue 3 + Vite + БЭМ
+
+- Vue: [Quick Start](https://vuejs.org/guide/quick-start.html)
+- Vite + proxy на API в dev: [server.proxy](https://vitejs.dev/config/server-options.html#server-proxy)
+- БЭМ: [методология](https://ru.bem.info/methodology/quick-start/)
+
+### PrimeVue
+
+Взял **PrimeVue**, потому что в ТЗ нужны нормальные UI-паттерны без велосипеда: всплывающие ошибки и диалог подтверждения.
+
+Что используем из библиотеки ([документация](https://primevue.org/)):
+
+| Компонент / сервис | Зачем |
+|--------------------|--------|
+| **Toast** + `ToastService` | Ошибки сети, LLM, голоса — красные/жёлтые всплывашки справа сверху, а не строка над инпутом |
+| **ConfirmDialog** + `ConfirmationService` | Удаление чата — своё модальное окно вместо системного `confirm()` браузера |
+| **Тема Aura** | Стили PrimeVue; тёмный режим синхронизирован с `data-theme="dark"` на `<html>` |
+
+Подключение: `client/src/main.js` — `PrimeVue`, `ToastService`, `ConfirmationService`. Обёртка `useNotify.js` для toast из любого места.
+
+### Express + LLM
+
+- Express: [установка](https://expressjs.com/en/starter/installing.html)
+- Ключи **только на сервере** (`server/.env`), в браузер не попадают
+- **Groq** — тот же формат, что OpenAI Chat Completions: [Quickstart](https://console.groq.com/docs/quickstart), [ключи](https://console.groq.com/keys)
+- **OpenAI** — опция, если есть квота: [Chat Completions](https://platform.openai.com/docs/api-reference/chat/create)
+- Приоритет: если задан `GROQ_API_KEY` — идём в Groq; иначе OpenAI (`AI_PROVIDER` в `.env`)
+
+### Голос
+
+- [Web Speech API / SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)
+- Лучше всего **Chrome на Android**; на iPhone Safari часто недоступен — ограничение браузера
 
 ## Запуск локально
 
-1) **Переменные окружения для сервера**
+1. Скопируй `server/.env.example` → `server/.env`, вставь **`GROQ_API_KEY`** ([console.groq.com/keys](https://console.groq.com/keys)).
 
-Скопируй `server/.env.example` → `server/.env` и вставь свой `OPENAI_API_KEY`.
-
-2) **Терминал A — API**
+2. **API:**
 
 ```bash
 cd server
@@ -26,7 +66,7 @@ npm install
 npm run dev
 ```
 
-3) **Терминал B — фронт**
+3. **Фронт:**
 
 ```bash
 cd client
@@ -34,33 +74,57 @@ npm install
 npm run dev
 ```
 
-Открой `http://localhost:5173`.
+4. Открой **http://localhost:5173**
 
-Если вдруг гоняешь **`vite preview`**, прокси из dev-режима не работает как ты ожидаешь — тогда либо подними `SERVE_STATIC` (см. ниже), либо создай `client/.env` из `client/.env.example` и пропиши `VITE_API_BASE_URL=http://localhost:3000`.
+### Доступ с телефона в Wi‑Fi
 
-## Один процесс на проде (удобно для «дайте потыкать по ссылке»)
+В `server/.env`: `HOST=0.0.0.0`, `CORS_ALLOW_LAN=true` (см. example).
+
+1. `npm run dev` в `server` и `client` (Vite с `--host`)
+2. `ipconfig` → IPv4, например `192.168.1.10`
+3. На телефоне: **http://192.168.1.10:5173**
+4. Разреши Node.js в firewall для частной сети
+
+### Один процесс (демо / прод)
 
 ```bash
 cd client && npm install && npm run build
 cd ../server && npm install
 set SERVE_STATIC=true
-set CLIENT_ORIGIN=http://localhost:3000
+set HOST=0.0.0.0
 node src/index.js
 ```
 
-На Linux/mac вместо `set` — `export`. После этого UI и API будут с одного порта (например 3000), ключ остаётся на сервере.
+Linux/mac: `export` вместо `set`. UI + API с одного порта (3000).
 
-## Обработка ошибок / UX
+## Структура
 
-- **Сеть/OpenAI**: сервер пробует распарсить JSON ошибки и отдать человекочитаемое `error` на фронт; на клиенте показываем строку над инпутом.
-- **Валидация**: пустые сообщения, слишком длинные тексты, битый JSON — отсекаем с 400, чтобы не гадать «что сломалось».
-- **Лоадер**: спиннер на кнопке отправки + «печатает…» точками в ленте, пока ждём ответ.
+```
+client/
+  src/
+    App.vue              # UI чата, темы, сайдбар
+    composables/
+      useChatApi.js      # запросы к /api/chat
+      useChatSessions.js # чаты в localStorage
+      useNotify.js       # PrimeVue Toast
+      useSpeechToText.js # микрофон
+      useTheme.js        # светлая/тёмная
+server/
+  src/index.js           # Express, прокси Groq/OpenAI
+```
 
-## Структура репы
+## Переменные окружения (`server/.env`)
 
-- `client/` — Vue 3
-- `server/` — Express + прокси к OpenAI
+| Переменная | Описание |
+|------------|----------|
+| `GROQ_API_KEY` | Ключ Groq (рекомендуется для тестового) |
+| `GROQ_MODEL` | По умолчанию `llama-3.3-70b-versatile` |
+| `OPENAI_API_KEY` | Опционально |
+| `AI_PROVIDER` | `groq` \| `openai` (если оба ключа) |
+| `HOST` | `0.0.0.0` для LAN |
+| `CORS_ALLOW_LAN` | `true` — CORS с IP телефона |
+| `SERVE_STATIC` | `true` — отдавать `client/dist` |
 
 ---
 
-*P.S. Если OpenAI ругнётся на биллинг/лимиты — это уже их сторона, но приложение хотя бы нормально покажет текст ошибки, а не белый экран ))*
+*P.S. Если Groq ругнётся на лимиты — подожди или заведи новый ключ; OpenAI без оплаты обычно сразу quota ))*

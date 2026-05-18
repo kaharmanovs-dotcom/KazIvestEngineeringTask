@@ -1,5 +1,5 @@
 /**
- * Обёртка над нашим бэком. В dev Vite проксирует /api на express — см. vite.config.js
+ * Обёртка над нашим бэком. В dev Vite проксирует /api на express - см. vite.config.js
  * (официально про proxy: https://vitejs.dev/config/server-options.html#server-proxy)
  */
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -16,7 +16,7 @@ export function useChatApi() {
     try {
       body = await res.json();
     } catch {
-      // если прилетел не json — хоть что-то покажем
+      // если прилетел не json - хоть что-то покажем
     }
 
     if (!res.ok) {

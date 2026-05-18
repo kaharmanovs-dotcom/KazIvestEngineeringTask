@@ -4,6 +4,44 @@
   box-sizing: border-box;
 }
 
+html,
 body {
+  height: 100%;
   margin: 0;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+}
+
+.ai-app {
+  height: 100%;
+}
+
+html[data-theme='dark'] body {
+  background: #141c28;
+}
+
+html[data-theme='light'] body {
+  background: #eef2f7;
+}
+
+/* PrimeVue Toast поверх сайдбара и оверлея */
+.p-toast {
+  z-index: 1100;
+  max-width: min(420px, 92vw);
+}
+
+.p-toast-message-text {
+  word-break: break-word;
+}
+
+.p-confirmdialog,
+.p-dialog-mask {
+  z-index: 1200;
+}
+
+.p-confirmdialog .p-dialog {
+  max-width: min(420px, 92vw);
 }

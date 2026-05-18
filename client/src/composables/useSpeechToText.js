@@ -1,13 +1,25 @@
 import { ref } from 'vue';
 
 /**
- * SpeechRecognition — браузерный API, в Chrome часто висит как webkitSpeechRecognition.
+ * SpeechRecognition - браузерный API, в Chrome часто висит как webkitSpeechRecognition.
  * MDN: https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition
  */
+
+let recGen = 0;
+
+function detectMobile() {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)')?.matches)
+  );
+}
+
 export function useSpeechToText() {
   const listening = ref(false);
   const supported = ref(false);
   const lastError = ref('');
+  const isMobile = ref(detectMobile());
 
   const Recognition =
     typeof window !== 'undefined' &&
@@ -16,32 +28,95 @@ export function useSpeechToText() {
   if (Recognition) supported.value = true;
 
   let recognition = null;
+  let sessionTranscript = '';
+  let userRequestedFinalize = false;
+  let doneFired = false;
+  let finalizeTimer = null;
+  let activeOnDone = null;
+  let activeOnChunk = null;
 
-  function stop() {
-    if (!recognition) return;
-    try {
-      recognition.stop();
-    } catch {
-      // иногда бросает если уже остановлено — не критично
+  function clearFinalizeTimer() {
+    if (finalizeTimer) {
+      clearTimeout(finalizeTimer);
+      finalizeTimer = null;
     }
-    listening.value = false;
+  }
+
+  function fireDone() {
+    if (doneFired || !userRequestedFinalize) return;
+    const text = sessionTranscript.trim();
+    doneFired = true;
+    userRequestedFinalize = false;
+    clearFinalizeTimer();
+    if (text && typeof activeOnDone === 'function') {
+      activeOnDone(text);
+    }
   }
 
   /**
-   * onChunk — потоковый текст (interim + final), чтобы кидать прямо в input
+   * @param {{ mode?: 'finalize' | 'abort' }} [opts]
    */
-  function start({ lang = 'ru-RU', onChunk } = {}) {
-    lastError.value = '';
-    if (!Recognition) {
-      lastError.value = 'Браузер без Web Speech API (попробуй Chrome / Edge)';
+  function stop(opts = {}) {
+    const mode = opts.mode === 'abort' ? 'abort' : 'finalize';
+
+    if (mode === 'abort') {
+      recGen += 1;
+      userRequestedFinalize = false;
+      doneFired = true;
+      clearFinalizeTimer();
+    } else {
+      userRequestedFinalize = true;
+      doneFired = false;
+      // на мобилках onend иногда приходит с задержкой или не приходит
+      clearFinalizeTimer();
+      finalizeTimer = setTimeout(fireDone, 600);
+    }
+
+    if (!recognition) {
+      listening.value = false;
+      if (mode === 'finalize') fireDone();
       return;
     }
 
-    stop();
+    const r = recognition;
+    recognition = null;
+    try {
+      r.stop();
+    } catch {
+      /* уже остановлено */
+    }
+    listening.value = false;
+
+  }
+
+  /**
+   * onChunk - текст в поле (можно проверить перед отправкой)
+   * onDone - только когда пользователь сам нажал «стоп» (второй тап по микрофону)
+   */
+  function start({ lang = 'ru-RU', onChunk, onDone } = {}) {
+    lastError.value = '';
+    if (!Recognition) {
+      lastError.value = 'Браузер без Web Speech API (попробуй Chrome / Edge на Android)';
+      return;
+    }
+
+    stop({ mode: 'abort' });
+    const myGen = recGen;
+
+    sessionTranscript = '';
+    userRequestedFinalize = false;
+    doneFired = false;
+    activeOnDone = onDone;
+    activeOnChunk = onChunk;
+
+    let skipAutoDone = false;
+    const useContinuous = isMobile.value;
+
     recognition = new Recognition();
     recognition.lang = lang;
     recognition.interimResults = true;
-    recognition.continuous = false;
+    // на телефоне иначе браузер сам рвёт сессию через пару секунд
+    recognition.continuous = useContinuous;
 
     recognition.onstart = () => {
       listening.value = true;
@@ -49,24 +124,42 @@ export function useSpeechToText() {
 
     recognition.onerror = (ev) => {
       listening.value = false;
-      // no-speech бывает если помолчал — не пугаем юзера как «фатал»
       if (ev.error === 'no-speech') {
         lastError.value = '';
+        skipAutoDone = true;
         return;
       }
+      if (ev.error === 'aborted') {
+        skipAutoDone = true;
+        return;
+      }
+      skipAutoDone = true;
       lastError.value = ev.message || ev.error || 'speech error';
     };
 
     recognition.onend = () => {
       listening.value = false;
+      if (myGen !== recGen) return;
+
+      const t = sessionTranscript.trim();
+      if (t && activeOnChunk) activeOnChunk(t, true);
+
+      if (skipAutoDone) return;
+
+      // авто-onend без тапа «стоп» - только текст в инпут, без отправки
+      if (userRequestedFinalize) {
+        fireDone();
+      }
     };
 
     recognition.onresult = (event) => {
-      let text = '';
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        text += event.results[i][0].transcript;
+      let all = '';
+      for (let i = 0; i < event.results.length; i += 1) {
+        all += event.results[i][0].transcript;
       }
-      if (onChunk) onChunk(text, event.results[event.results.length - 1]?.isFinal === true);
+      sessionTranscript = all;
+      const last = event.results[event.results.length - 1];
+      if (activeOnChunk) activeOnChunk(all, last?.isFinal === true);
     };
 
     try {
@@ -77,5 +170,5 @@ export function useSpeechToText() {
     }
   }
 
-  return { supported, listening, lastError, start, stop };
+  return { supported, listening, lastError, isMobile, start, stop };
 }
