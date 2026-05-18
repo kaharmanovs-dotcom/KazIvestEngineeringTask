@@ -1,5 +1,15 @@
 # KazIvestEngineeringTask
 
+Меня зовут Шамиль, мне 29 лет. На протяжении 5 лет принимал участие в различных проектах, преимущественно как фронтенд-разработчик, но есть уверенное владение Node.js.
+
+Я не претендую на звание «самый умный разработчик». Просто хочу сказать, что люблю то, чем занимаюсь: когда строю приложение или сайт, чувствую прилив сил — к слову о том, насколько люблю свою профессию. Буду честен: в работе использую ИИ и разные источники вроде Stack Overflow, но прежде чем начал их использовать, прошёл время, когда этих привилегий не было, и мне, как и многим, приходилось всё писать абсолютно от руки и брать знания частично на форумах, частично из книг. По теории скажу честно — это не моя сильная сторона.
+
+У меня есть понимание построения SPA, разных технологий — где какую применять; со временем появилось и видение. Легко контактирую с людьми (ни к кому претензий по жизни не имею). Готов к сложным задачам. Если остались вопросы — смело задавайте, буду рад.
+
+---
+
+## А это у нас инструкция к тому, что я тут натворил
+
 Тестовое fullstack: чат с ИИ (прокси к **Groq** / опционально OpenAI), голосовой ввод, история чатов, светлая и тёмная тема. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
 
 ## Что умеет приложение
@@ -20,7 +30,7 @@
 |-----|----------------|
 | История чатов (сообщения, названия) | **localStorage** в браузере, ключ `kazivest-ai-chats-v1` (`client/src/composables/useChatSessions.js`) |
 | Светлая / тёмная тема | **localStorage**, ключ `kazivest-theme` |
-| API-ключ Groq / OpenAI | только на **сервере** в `server/.env` (локально) или в **Environment** на Render — в git не попадает |
+| API-ключ Groq / OpenAI | только на **сервере** в `server/.env` или в **Environment** на Render — в git не попадает |
 
 **Бэкенд (Express)** переписку **не сохраняет**: принимает текст → отправляет в Groq/OpenAI → отдаёт ответ. После перезагрузки страницы сервер «не помнит» диалог — помнит только браузер, если не очистили данные сайта.
 
@@ -76,49 +86,6 @@
 - [Web Speech API / SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)
 - Лучше всего **Chrome на Android**; на iPhone Safari часто недоступен — ограничение браузера
 
-## Запуск локально
-
-1. Скопируй `server/.env.example` → `server/.env`, вставь **`GROQ_API_KEY`** ([console.groq.com/keys](https://console.groq.com/keys)).
-
-2. **API:**
-
-```bash
-cd server
-npm install
-npm run dev
-```
-
-3. **Фронт:**
-
-```bash
-cd client
-npm install
-npm run dev
-```
-
-4. Открой **http://localhost:5173**
-
-### Доступ с телефона в Wi‑Fi
-
-В `server/.env`: `HOST=0.0.0.0`, `CORS_ALLOW_LAN=true` (см. example).
-
-1. `npm run dev` в `server` и `client` (Vite с `--host`)
-2. `ipconfig` → IPv4, например `192.168.1.10`
-3. На телефоне: **http://192.168.1.10:5173**
-4. Разреши Node.js в firewall для частной сети
-
-### Один процесс (демо / прод)
-
-```bash
-cd client && npm install && npm run build
-cd ../server && npm install
-set SERVE_STATIC=true
-set HOST=0.0.0.0
-node src/index.js
-```
-
-Linux/mac: `export` вместо `set`. UI + API с одного порта (3000).
-
 ### Деплой на Render (бесплатный tier)
 
 1. **Web Services** (не Static Sites — нужен Node для API).
@@ -156,7 +123,3 @@ server/
 | `HOST` | `0.0.0.0` для LAN |
 | `CORS_ALLOW_LAN` | `true` — CORS с IP телефона |
 | `SERVE_STATIC` | `true` — отдавать `client/dist` |
-
----
-
-*P.S. Если Groq ругнётся на лимиты — подожди или заведи новый ключ; OpenAI без оплаты обычно сразу quota ))*
