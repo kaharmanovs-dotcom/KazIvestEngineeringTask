@@ -10,6 +10,17 @@ function defaultTitle() {
   return 'Новый чат';
 }
 
+/** короткое имя чата — 3–4 слова хватит, остальное … */
+function shortTitle(text, maxWords = 4) {
+  const t = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t || t === defaultTitle()) return defaultTitle();
+  const words = t.split(' ').filter(Boolean);
+  if (words.length <= maxWords) return t;
+  return `${words.slice(0, maxWords).join(' ')}…`;
+}
+
 export function useChatSessions() {
   const sessions = ref([]);
   const activeId = ref(null);
@@ -97,18 +108,17 @@ export function useChatSessions() {
     session.updatedAt = Date.now();
   }
 
-  /** название чата = первый промпт пользователя (обрезка в UI через ellipsis) */
+  /** название чата = первые слова первого промпта */
   function maybeSetTitleFromMessage(session, userText) {
     if (!session) return;
     const userMsgs = session.messages.filter((m) => m.role === 'user');
     if (userMsgs.length !== 1) return;
-    const t = userText.replace(/\s+/g, ' ').trim();
-    session.title = t || defaultTitle();
+    session.title = shortTitle(userText);
   }
 
   function sessionDisplayTitle(session) {
     if (!session?.title) return defaultTitle();
-    return session.title;
+    return shortTitle(session.title);
   }
 
   watch(
