@@ -10,7 +10,13 @@ import { useSpeechToText } from './composables/useSpeechToText.js';
 import { useTheme } from './composables/useTheme.js';
 
 const { sendMessages } = useChatApi();
-const speech = useSpeechToText();
+const {
+  supported: speechSupported,
+  listening: speechListening,
+  lastError: speechLastError,
+  start: speechStart,
+  stop: speechStop,
+} = useSpeechToText();
 const notify = useNotify();
 const confirm = useConfirm();
 const { theme, toggle: toggleTheme } = useTheme();
@@ -115,14 +121,14 @@ function toggleSidebar() {
 }
 
 function startNewChat() {
-  speech.stop({ mode: 'abort' });
+  speechStop({ mode: 'abort' });
   input.value = '';
   createSession();
   closeSidebar();
 }
 
 function pickSession(id) {
-  speech.stop({ mode: 'abort' });
+  speechStop({ mode: 'abort' });
   input.value = '';
   selectSession(id);
   closeSidebar();
@@ -148,7 +154,7 @@ function removeSession(id) {
       severity: 'danger',
     },
     accept: () => {
-      speech.stop({ mode: 'abort' });
+      speechStop({ mode: 'abort' });
       input.value = '';
       deleteSession(id);
     },
@@ -165,13 +171,13 @@ function onKeydown(e) {
 function toggleMic() {
   if (loading.value) return;
 
-  if (speech.listening.value) {
+  if (speechListening.value) {
     // второй тап - стоп, текст уже в поле, отправляем
-    speech.stop({ mode: 'finalize' });
+    speechStop({ mode: 'finalize' });
     return;
   }
 
-  speech.start({
+  speechStart({
     lang: 'ru-RU',
     onChunk: (text) => {
       input.value = text;
@@ -188,7 +194,7 @@ function toggleMic() {
   });
 }
 
-watch(speech.lastError, (v) => {
+watch(speechLastError, (v) => {
   if (v) notify.warn(v, 'Голосовой ввод');
 });
 </script>
@@ -325,7 +331,7 @@ watch(speech.lastError, (v) => {
       </main>
 
       <div class="ai-chat__footer">
-        <p v-if="speech.listening" class="ai-chat__voice-hint" role="status">
+        <p v-if="speechListening" class="ai-chat__voice-hint" role="status">
           <span class="ai-chat__voice-pulse" aria-hidden="true" />
           Идёт запись… Проверь текст ниже и нажми
           <strong>микрофон ещё раз</strong>
@@ -334,13 +340,13 @@ watch(speech.lastError, (v) => {
 
         <form class="ai-chat__composer" @submit.prevent="submit">
           <button
-            v-if="speech.supported"
+            v-if="speechSupported"
             type="button"
             class="ai-chat__mic"
-            :class="{ 'ai-chat__mic--on': speech.listening }"
-            :aria-pressed="speech.listening"
+            :class="{ 'ai-chat__mic--on': speechListening }"
+            :aria-pressed="speechListening"
             :aria-label="
-              speech.listening ? 'Остановить запись и отправить' : 'Начать голосовой ввод'
+              speechListening ? 'Остановить запись и отправить' : 'Начать голосовой ввод'
             "
             @click="toggleMic"
           >
@@ -366,9 +372,7 @@ watch(speech.lastError, (v) => {
             type="text"
             name="prompt"
             autocomplete="off"
-            :placeholder="
-              speech.listening ? 'Говорите…' : 'Спроси что угодно…'
-            "
+            :placeholder="speechListening ? 'Говорите…' : 'Спроси что угодно…'"
             :disabled="loading"
             @keydown="onKeydown"
           />
