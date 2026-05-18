@@ -1,31 +1,66 @@
 # KazIvestEngineeringTask
 
-Привет. Это репа под тестовое задание (ТЗ ещё в пути — пока тут только «скелет», без магии).
+Тестовое fullstack: чат с прокси к OpenAI + (усложнёнка) голос в текст через Web Speech API. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
 
-## Стек (как договорились)
+## Стек (как договорились + что разрешено в ТЗ)
 
-- **Vue 3** — компоненты, реактивность, нормальный DX
-- **БЭМ** — в разметке/классах, чтобы не утонуть в `div > div > div` без смысла
-- **Node.js + Express** — простой и предсказуемый бэкенд под API
+- **Vue 3 + Vite** — фронт. Почему Vite: официально рекомендуют как стандартный билд для Vue, см. [Quick Start](https://vuejs.org/guide/quick-start.html).
+- **БЭМ** — классы вида `ai-chat__composer`, `ai-chat__mic--on` и т.д., чтобы по разметке было видно блок/элемент/модификатор ([коротко про БЭМ](https://ru.bem.info/methodology/quick-start/)).
+- **Express** — бэкенд, держит `OPENAI_API_KEY` только на сервере (ключ в браузер не светим — это не «паранойя», это нормальная модель для API-ключей). Старт по классике: [Express — установка](https://expressjs.com/en/starter/installing.html).
+- **OpenAI Chat Completions** — зовём `https://api.openai.com/v1/chat/completions` через `fetch` на Node 18+ (отдельный SDK не тащил — меньше зависимостей, поведение прозрачное). Формат запроса/ответа как в доке: [Chat Completions](https://platform.openai.com/docs/api-reference/chat/create).
+- **Голос** — `SpeechRecognition` / `webkitSpeechRecognition`, потому что в ТЗ прямым текстом разрешили Web Speech API; удобная выжимка по браузерам/ограничениям на MDN: [SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition). Про префикс `webkit` в Chrome часто всплывает в обсуждениях на Stack Overflow, например тут: [webkitSpeechRecognition vs SpeechRecognition](https://stackoverflow.com/questions/23728542/google-chrome-33-beta-speech-recognition-webspeechapi-broken) (да, тред старый, но суть про префиксы до сих пор актуальная в части браузеров).
 
-Почему так, а не «магический фреймворк на бэке»: для тестового обычно хотят увидеть, что ты понимаешь HTTP, роуты, middleware, ошибки — Express в этом плане прям канон. Официальный гайд тут: [Express — начало работы](https://expressjs.com/en/starter/installing.html).
+Про **прокси в dev**: в `client/vite.config.js` настроен `server.proxy` на `127.0.0.1:3000`, чтобы с фронта ходить на `/api/...` без CORS-танцев с бубном (это штатная фича Vite: [server.proxy](https://vitejs.dev/config/server-options.html#server-proxy)).
 
-Про Vue 3 — официальное введение всё ещё лучший старт: [Vue 3 — Quick Start](https://vuejs.org/guide/quick-start.html).
+## Запуск локально
 
-Про БЭМ — методология на сайте Яндекса, чтобы не спорить «как называть классы»: [БЭМ](https://ru.bem.info/methodology/quick-start/).
+1) **Переменные окружения для сервера**
 
-## Что уже сделано на старте
+Скопируй `server/.env.example` → `server/.env` и вставь свой `OPENAI_API_KEY`.
 
-1. **`.gitignore`** — чтобы `node_modules`, билды и `.env` случайно не улетели в GitHub (это не паранойя, это базовая гигиена — иначе потом «ой, а ключи утекли» и никто не смеётся)). Паттерны подсматривал из типовых шаблонов вроде [gitignore для Node](https://github.com/github/gitignore/blob/main/Node.gitignore) и для фронта — там же есть куски под Vue/Vite, если пойдём через Vite.
+2) **Терминал A — API**
 
-2. **`README`** — будем дописывать по мере работы: какие решения приняли и **почему** (со ссылками на доки / статьи / тред на Stack Overflow, если там реально полезное обсуждение edge-case’ов).
+```bash
+cd server
+npm install
+npm run dev
+```
 
-## Как дальше пойдём (когда будет ТЗ)
+3) **Терминал B — фронт**
 
-- Разобьем задачу на куски: API ↔ фронт ↔ стили/БЭМ
-- В конце — короткий «почему так» в этом README (без канцелярита, нормальным языком)
-- Если что-то спорное — зафиксируем trade-off’ы (скорость vs читаемость и т.д.)
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Открой `http://localhost:5173`.
+
+Если вдруг гоняешь **`vite preview`**, прокси из dev-режима не работает как ты ожидаешь — тогда либо подними `SERVE_STATIC` (см. ниже), либо создай `client/.env` из `client/.env.example` и пропиши `VITE_API_BASE_URL=http://localhost:3000`.
+
+## Один процесс на проде (удобно для «дайте потыкать по ссылке»)
+
+```bash
+cd client && npm install && npm run build
+cd ../server && npm install
+set SERVE_STATIC=true
+set CLIENT_ORIGIN=http://localhost:3000
+node src/index.js
+```
+
+На Linux/mac вместо `set` — `export`. После этого UI и API будут с одного порта (например 3000), ключ остаётся на сервере.
+
+## Обработка ошибок / UX
+
+- **Сеть/OpenAI**: сервер пробует распарсить JSON ошибки и отдать человекочитаемое `error` на фронт; на клиенте показываем строку над инпутом.
+- **Валидация**: пустые сообщения, слишком длинные тексты, битый JSON — отсекаем с 400, чтобы не гадать «что сломалось».
+- **Лоадер**: спиннер на кнопке отправки + «печатает…» точками в ленте, пока ждём ответ.
+
+## Структура репы
+
+- `client/` — Vue 3
+- `server/` — Express + прокси к OpenAI
 
 ---
 
-*P.S. Если в ТЗ окажется «сделай на Nuxt / Nest / ещё что-то» — не паника, просто перекинем структуру, идея та же.*
+*P.S. Если OpenAI ругнётся на биллинг/лимиты — это уже их сторона, но приложение хотя бы нормально покажет текст ошибки, а не белый экран ))*
