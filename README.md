@@ -10,7 +10,19 @@
 
 ## А это у нас инструкция к тому, что я тут натворил
 
-Тестовое fullstack: чат с ИИ (прокси к **Groq** / опционально OpenAI), голосовой ввод, история чатов, светлая и тёмная тема. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
+Тестовое fullstack: чат с ИИ через **Groq**, голосовой ввод, история чатов, светлая и тёмная тема. ТЗ: [Google Doc](https://docs.google.com/document/d/1DaS95vwVQb27_IO_VujcvVm5vK89FPYJIkN_qOx8tp4/edit?tab=t.0).
+
+**OpenAI не стал использовать** - он платный, а для тестового нужен был рабочий вариант без лишних трат. Взял **Groq** (бесплатный tier, ключ на [console.groq.com](https://console.groq.com/keys)).
+
+### Интерфейс и что добавил от себя
+
+Фронт написал **свой** - мне так больше нравится. Если понадобится, **с лёгкостью подгоню под макет из ТЗ**.
+
+Сверх ТЗ (в задании этого не было, но для меня это база, хе-хе):
+
+- **Список чатов** в сайдбаре, как в обычных ИИ-интерфейсах (несколько диалогов, переключение, удаление)
+- **Тёмная и светлая тема**
+- **Мобильная версия** (бургер-меню, адаптивная вёрстка)
 
 ## Что умеет приложение
 
@@ -29,9 +41,9 @@
 |-----|----------------|
 | История чатов (сообщения, названия) | **localStorage** в браузере, ключ `kazivest-ai-chats-v1` (`client/src/composables/useChatSessions.js`) |
 | Светлая / тёмная тема | **localStorage**, ключ `kazivest-theme` |
-| API-ключ Groq / OpenAI | только на **сервере** в `server/.env` или в **Environment** на Render - в git не попадает |
+| API-ключ Groq | только на **сервере** в `server/.env` или в **Environment** на Render - в git не попадает |
 
-**Бэкенд (Express)** переписку **не сохраняет**: принимает текст → отправляет в Groq/OpenAI → отдаёт ответ. После перезагрузки страницы сервер «не помнит» диалог - помнит только браузер, если не очистили данные сайта.
+**Бэкенд (Express)** переписку **не сохраняет**: принимает текст, отправляет в Groq, отдаёт ответ. После перезагрузки страницы сервер «не помнит» диалог - помнит только браузер, если не очистили данные сайта.
 
 ### Что это значит на практике
 
@@ -49,7 +61,7 @@
 | Фронт | **Vue 3**, **Vite**, **БЭМ** (`ai-chat__…`) |
 | UI | **PrimeVue 4** - см. ниже |
 | Бэк | **Node.js**, **Express** (без БД, stateless API) |
-| LLM | **Groq** (бесплатный tier) или **OpenAI** Chat Completions |
+| LLM | **Groq** (бесплатный tier) |
 | Данные чатов | **localStorage** (клиент), не сервер |
 
 ### Vue 3 + Vite + БЭМ
@@ -72,13 +84,11 @@
 
 Подключение: `client/src/main.js` - `PrimeVue`, `ToastService`, `ConfirmationService`. Обёртка `useNotify.js` для toast из любого места.
 
-### Express + LLM
+### Express + Groq
 
 - Express: [установка](https://expressjs.com/en/starter/installing.html)
-- Ключи **только на сервере** (`server/.env`), в браузер не попадают
-- **Groq** - тот же формат, что OpenAI Chat Completions: [Quickstart](https://console.groq.com/docs/quickstart), [ключи](https://console.groq.com/keys)
-- **OpenAI** - опция, если есть квота: [Chat Completions](https://platform.openai.com/docs/api-reference/chat/create)
-- Приоритет: если задан `GROQ_API_KEY` - идём в Groq; иначе OpenAI (`AI_PROVIDER` в `.env`)
+- Ключ **только на сервере** (`server/.env`), в браузер не попадает
+- **Groq**: [Quickstart](https://console.groq.com/docs/quickstart), [ключи](https://console.groq.com/keys)
 
 ### Голос
 
@@ -110,17 +120,15 @@ client/
       useSpeechToText.js # микрофон
       useTheme.js        # светлая/тёмная
 server/
-  src/index.js           # Express, прокси Groq/OpenAI
+  src/index.js           # Express, прокси Groq
 ```
 
 ## Переменные окружения (`server/.env`)
 
 | Переменная | Описание |
 |------------|----------|
-| `GROQ_API_KEY` | Ключ Groq (рекомендуется для тестового) |
+| `GROQ_API_KEY` | Ключ Groq |
 | `GROQ_MODEL` | По умолчанию `llama-3.3-70b-versatile` |
-| `OPENAI_API_KEY` | Опционально |
-| `AI_PROVIDER` | `groq` \| `openai` (если оба ключа) |
 | `HOST` | `0.0.0.0` для LAN |
 | `CORS_ALLOW_LAN` | `true` - CORS с IP телефона |
 | `SERVE_STATIC` | `true` - отдавать `client/dist` |
