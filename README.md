@@ -86,7 +86,9 @@
 - [Web Speech API / SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)
 - Лучше всего **Chrome на Android**; на iPhone Safari часто недоступен — ограничение браузера
 
-### Деплой на Render (бесплатный tier)
+### Деплой на [Render.com](https://render.com) (бесплатный tier)
+
+Для размещения проекта выбрал **Render.com**: на бесплатном тарифе можно быстро поднять fullstack (и фронт, и Node API) и **протестировать всё по ссылке** — без своего VPS, домена и долгой возни с сервером. Для тестового задания этого достаточно.
 
 1. **Web Services** (не Static Sites — нужен Node для API).
 2. Build: `cd client && npm install && npm run build && cd ../server && npm install`
